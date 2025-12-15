@@ -1,0 +1,175 @@
+// sample.cpp - 競技プログラミング用 C++ テンプレート
+/*
+
+最小限のコード量で典型的なアルゴリズム・データ構造をまとめています。
+
+必要に応じてコピー＆ペーストして活用してください。
+*/
+#include <bits/stdc++.h>
+using namespace std;
+
+// --------------------------------------------
+// 1. 型エイリアス
+// --------------------------------------------
+using ll  = long long;                      // 64 bit 整数
+using ull = unsigned long long;             // 64 bit 符号なし整数
+using pii = pair<int,int>;                  // int のペア
+using pll = pair<ll,ll>;                    // long long のペア
+
+// --------------------------------------------
+// 2. 定数
+// --------------------------------------------
+const ll INF64  = (1LL<<60);                // 64 bit 無限大
+const int INF32 = 1e9;                      // 32 bit 無限大
+const ll MOD    = 1'000'000'007LL;          // 典型的な 1e9+7
+// const ll MOD = 998'244'353LL;            // NTT 可能な素数 MOD
+
+// --------------------------------------------
+// 3. 高速入出力
+// --------------------------------------------
+struct FastIO {
+FastIO() {
+ios::sync_with_stdio(false);        // iostream と stdio の同期を解除
+cin.tie(nullptr);                   // cin と cout の結合を解除
+}
+} fastio;                                   // グローバル生成で main 前に実行
+
+// --------------------------------------------
+// 4. ユーティリティ関数
+// --------------------------------------------
+// (a) べき乗（繰り返し二乗法）
+ll modpow(ll a, ll e, ll m = MOD) {
+ll r = 1 % m;
+while (e > 0) {
+if (e & 1) r = (__int128)r * a % m; // 64 bit 超え対策に __int128 を使用
+a = (__int128)a * a % m;
+e >>= 1;
+}
+return r;
+}
+
+// (b) 逆元（フェルマーの小定理；m が素数のときのみ有効）
+ll modinv(ll a, ll m = MOD) {
+return modpow(a, m - 2, m);
+}
+
+// (c) 最大公約数・最小公倍数
+template T gcdll(T a, T b){ return b ? gcdll(b, a % b) : a; }
+template T lcmll(T a, T b){ return a / gcdll(a,b) * b; }
+
+// --------------------------------------------
+// 5. Union-Find（素集合データ構造）
+// --------------------------------------------
+struct DSU {
+vector p, sz;
+DSU(int n = 0) { init(n); }
+void init(int n){
+p.resize(n); iota(p.begin(), p.end(), 0); // 各頂点を親に設定
+sz.assign(n, 1);                          // 各集合サイズを 1 に初期化
+}
+int root(int v){ return p[v]==v ? v : p[v] = root(p[v]); }
+bool same(int a,int b){ return root(a)==root(b); }
+bool unite(int a,int b){
+a = root(a); b = root(b);
+if (a == b) return false;
+if (sz[a] < sz[b]) swap(a,b); // サイズの大きい方を根に
+p[b] = a; sz[a] += sz[b];
+return true;
+}
+int size(int v){ return sz[root(v)]; }
+};
+
+// --------------------------------------------
+// 6. Binary Indexed Tree（Fenwick Tree）
+// --------------------------------------------
+template
+struct BIT {
+int n;
+vector bit;
+BIT(int _n = 0){ init(_n); }
+void init(int _n){ n=_n; bit.assign(n+1,0); }
+void add(int idx, T val){
+for(++idx; idx<=n; idx += idx&-idx) bit[idx] += val;
+}
+T sum_prefix(int idx){
+T s=0;
+for(++idx; idx>0; idx -= idx&-idx) s += bit[idx];
+return s;
+}
+T sum_range(int l, int r){ return sum_prefix(r-1) - sum_prefix(l-1); }
+};
+
+// --------------------------------------------
+// 7. セグメント木（ポイント更新・区間取得の例）
+// --------------------------------------------
+template<class T, class F>
+struct SegTree {
+int n;
+vector seg;
+T e; F op;
+SegTree(int _n, T _e, F _op): e(_e), op(_op){
+n=1; while(n<_n) n<<=1;             // 2 の累乗に拡張
+seg.assign(2*n, e);
+}
+void set_val(int idx, T val){ seg[idx+n]=val; }
+void build(){ for(int i=n-1;i>0;--i) seg[i]=op(seg[i<<1], seg[i<<1|1]); }
+void update(int idx,T val){
+idx+=n;
+seg[idx]=val;
+while(idx>>=1) seg[idx]=op(seg[idx<<1], seg[idx<<1|1]);
+}
+T query(int l,int r){ // [l,r)
+T L=e,R=e;
+for(l+=n, r+=n; l<r; l>>=1, r>>=1){
+if(l&1) L=op(L,seg[l++]);
+if(r&1) R=op(seg[--r],R);
+}
+return op(L,R);
+}
+};
+
+// --------------------------------------------
+// 8. グラフアルゴリズム：ダイクストラ（単一始点最短距離）
+// --------------------------------------------
+vector dijkstra(const vector<vector<pair<int,ll>>>& g, int s){
+int n = g.size();
+vector dist(n, INF64);
+using P = pair<ll,int>;                  // (距離, 頂点)
+priority_queue<P, vector, greater> pq;
+dist[s]=0; pq.emplace(0,s);
+while(!pq.empty()){
+auto [d,v]=pq.top(); pq.pop();
+if(d>dist[v]) continue;              // 古いエントリは無視
+for(auto [to,c]: g[v]){
+if(dist[to] > d + c){
+dist[to] = d + c;
+pq.emplace(dist[to], to);
+}
+}
+}
+return dist;
+}
+
+// --------------------------------------------
+// 9. メイン関数（テンプレート）
+// --------------------------------------------
+int main(){
+// ここから問題ごとの処理を書く
+int n, m;
+cin >> n >> m;                           // 頂点数 n, 辺数 m
+vector<vector<pair<int,ll>>> g(n);
+for(int i=0;i<m;i++){
+int u,v; ll w;
+cin >> u >> v >> w;
+--u; --v;                            // 0-indexed に変換
+g[u].push_back({v,w});
+g[v].push_back({u,w});               // 無向グラフの場合
+}
+auto dist = dijkstra(g, 0);              // 頂点 0 からの距離
+for(auto d: dist){
+if(d==INF64) cout << -1 << '\n';    // 到達不可なら -1
+else cout << d << '\n';
+}
+return 0;
+}
+
